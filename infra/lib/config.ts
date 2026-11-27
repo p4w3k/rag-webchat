@@ -18,9 +18,41 @@ export interface StageConfig {
   chunking: { maxTokens: number; overlapPercentage: number };
   /** Monthly AWS budget in USD and the address that gets alerts. Leave the email empty to skip the budget. */
   budget: { monthlyUsd: number; alertEmail: string };
-  /** Keep data (buckets, vector index) when the stack is deleted. */
+  /** Keep data (buckets, vector index, chat table) when the stack is deleted. */
   retainData: boolean;
+  chat: ChatConfig;
 }
+
+export interface ChatConfig {
+  /**
+   * Claude model id on Claude in Amazon Bedrock (bedrock-mantle endpoint).
+   * Haiku is fast and cheap; switch to "anthropic.claude-sonnet-5-5" for harder questions.
+   */
+  modelId: string;
+  /** Company name the assistant speaks for. */
+  companyName: string;
+  /** Public key the widget sends; identifies the site, not a secret. */
+  siteKey: string;
+  /** Website origins allowed to call the API. "*" allows any (dev only). */
+  allowedOrigins: string[];
+  /** Passages retrieved from the knowledge base per question. */
+  retrievalResults: number;
+  /** Earlier messages (visitor + bot) sent to the model as context. */
+  historyMessages: number;
+  maxOutputTokens: number;
+  maxRequestsPerIpPerHour: number;
+  maxMessagesPerSessionPerDay: number;
+}
+
+const sharedChat = {
+  modelId: "anthropic.claude-haiku-5-5",
+  companyName: "Ciepłolux",
+  retrievalResults: 6,
+  historyMessages: 6,
+  maxOutputTokens: 800,
+  maxRequestsPerIpPerHour: 60,
+  maxMessagesPerSessionPerDay: 40,
+} satisfies Partial<ChatConfig>;
 
 const shared = {
   region: "eu-central-1",
@@ -35,12 +67,15 @@ export const stages: Record<StageConfig["stage"], StageConfig> = {
     stage: "dev",
     budget: { monthlyUsd: 20, alertEmail: "" },
     retainData: false,
+    chat: { ...sharedChat, siteKey: "dev-local", allowedOrigins: ["*"] },
   },
   prod: {
     ...shared,
     stage: "prod",
     budget: { monthlyUsd: 30, alertEmail: "" },
     retainData: true,
+    // Replace with the company website's origin(s) before the first prod deploy.
+    chat: { ...sharedChat, siteKey: "prod-website", allowedOrigins: ["https://www.example.com"] },
   },
 };
 

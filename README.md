@@ -8,9 +8,9 @@ Architecture doc: https://claude.ai/artifact/YAPkxQYyVGgNt8rC95y8hs
 
 | Phase | What | State |
 | --- | --- | --- |
-| 1 | PDF bucket, Bedrock Knowledge Base on S3 Vectors, auto re-sync, budget alert | this repo |
-| 2 | Streaming chat API (Lambda) | next |
-| 3 | Embeddable widget | planned |
+| 1 | PDF bucket, Bedrock Knowledge Base on S3 Vectors, auto re-sync, budget alert | done |
+| 2 | Streaming chat API (Lambda Function URL, SSE) | done |
+| 3 | Embeddable widget | next |
 | 4 | CloudFront + WAF, limits, alarms | planned |
 | 5 | Evaluation set, launch | planned |
 
@@ -19,10 +19,13 @@ Architecture doc: https://claude.ai/artifact/YAPkxQYyVGgNt8rC95y8hs
 ```text
 packages/
   shared/   chat API types and message schema (zod), shared by API and widget
-  api/      Lambda handlers (ingest.ts: re-syncs the knowledge base when PDFs change)
+  api/      Lambda handlers
+    src/ingest.ts       re-syncs the knowledge base when PDFs change
+    src/chat/           chat API: request checks, RAG pipeline, prompts, DynamoDB store
 infra/      AWS CDK app (TypeScript)
   lib/config.ts             all per-stage settings: region, models, chunking, budget
   lib/knowledge-base-stack.ts
+  lib/chat-stack.ts
   lib/cost-stack.ts
 ```
 
@@ -32,7 +35,13 @@ All configuration lives in this repo (`infra/lib/config.ts`). Secrets never do: 
 
 - Node.js 22 (`nvm use`) and npm
 - AWS CLI v2 signed in to your account (`aws sts get-caller-identity` works)
-- In the Bedrock console for **eu-central-1**, confirm access to **Titan Text Embeddings V2** (`amazon.titan-embed-text-v2:0`)
+- Bedrock model access in **eu-central-1** for **Titan Text Embeddings V2** (`amazon.titan-embed-text-v2:0`) and **Claude Haiku 5.5**. Check it with:
+
+  ```bash
+  aws bedrock get-foundation-model-availability --model-id amazon.titan-embed-text-v2:0 --region eu-central-1
+  ```
+
+  `authorizationStatus` must be `AUTHORIZED`. New AWS accounts may need a payment method on file or an AWS Support case before Bedrock models can be used.
 - One-time CDK bootstrap of the account and region:
 
 ```bash
@@ -77,6 +86,19 @@ aws bedrock-agent-runtime retrieve \
 ```
 
 You can also use **Test knowledge base** in the Bedrock console.
+
+## Chat API
+
+`npm run deploy:dev` also deploys `RagWebchat-dev-Chat`, which prints `ChatUrl`. Send a question and watch the answer stream back as Server-Sent Events:
+
+```bash
+curl -N -X POST "<ChatUrl>" -H "content-type: application/json" \
+  -d '{"siteKey":"dev-local","sessionId":"'"$(uuidgen | tr A-Z a-z)"'","message":"Ile kosztuje pompa Komfort 9?"}'
+```
+
+Events: `token` (a piece of the answer), `citations` (source PDFs and pages actually cited), `done`, or `error`. Reuse the same `sessionId` for follow-up questions.
+
+Settings live in `chat` in `infra/lib/config.ts`: model (`anthropic.claude-haiku-5-5` by default, or `anthropic.claude-sonnet-5-5`), company name, site key, allowed website origins, retrieval and history sizes, and rate limits (per IP per hour, per session per day). Dev allows any origin; set the real website origin for prod.
 
 ## Development
 
