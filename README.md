@@ -11,7 +11,7 @@ Architecture doc: https://claude.ai/artifact/YAPkxQYyVGgNt8rC95y8hs
 | 1 | PDF bucket, Bedrock Knowledge Base on S3 Vectors, auto re-sync, budget alert | this repo |
 | 2 | Streaming chat API (Lambda) | next |
 | 3 | Embeddable widget | planned |
-| 4 | CloudFront + WAF, limits, alarms | planned |
+| 4 | CloudFront + WAF, limits, alarms | planned (demo page on CloudFront done) |
 | 5 | Evaluation set, launch | planned |
 
 ## Layout
@@ -20,9 +20,11 @@ Architecture doc: https://claude.ai/artifact/YAPkxQYyVGgNt8rC95y8hs
 packages/
   shared/   chat API types and message schema (zod), shared by API and widget
   api/      Lambda handlers (ingest.ts: re-syncs the knowledge base when PDFs change)
+site/       static demo webpage (Ciepłolux, a fictional company) where the widget gets embedded
 infra/      AWS CDK app (TypeScript)
   lib/config.ts             all per-stage settings: region, models, chunking, budget
   lib/knowledge-base-stack.ts
+  lib/site-stack.ts         demo page: private S3 bucket + CloudFront (OAC, HTTPS)
   lib/cost-stack.ts
 ```
 
@@ -49,7 +51,17 @@ npm install
 npm run deploy:dev
 ```
 
-The stack prints `DocsBucketName`, `KnowledgeBaseId` and `DataSourceId`.
+The stacks print `DocsBucketName`, `KnowledgeBaseId`, `DataSourceId` and `SiteUrl`.
+
+## Demo webpage
+
+`site/` holds a static page for a fictional company, served from a private S3 bucket through CloudFront over HTTPS. To deploy only the page:
+
+```bash
+npm run deploy:site:dev
+```
+
+It prints `SiteUrl` (`https://<id>.cloudfront.net`). Edit files in `site/` and run the same command again: the bucket is synced and the CloudFront cache cleared. A new distribution takes a few minutes to come online after the first deploy. The chat widget placeholder is the comment at the end of `site/index.html`.
 
 ## Add documents
 
