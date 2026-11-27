@@ -10,7 +10,7 @@ Architecture doc: https://claude.ai/artifact/YAPkxQYyVGgNt8rC95y8hs
 | --- | --- | --- |
 | 1 | PDF bucket, Bedrock Knowledge Base on S3 Vectors, auto re-sync, budget alert | done |
 | 2 | Streaming chat API (Lambda Function URL, SSE) | done |
-| 3 | Embeddable widget | next |
+| 3 | Embeddable widget, on the demo page | done |
 | 4 | CloudFront + WAF, limits, alarms | planned (demo page on CloudFront done) |
 | 5 | Evaluation set, launch | planned |
 
@@ -19,6 +19,7 @@ Architecture doc: https://claude.ai/artifact/YAPkxQYyVGgNt8rC95y8hs
 ```text
 packages/
   shared/   chat API types and message schema (zod), shared by API and widget
+  widget/   embeddable chat widget: one script, a <rag-webchat> element in Shadow DOM (no framework)
   api/      Lambda handlers
     src/ingest.ts       re-syncs the knowledge base when PDFs change
     src/chat/           chat API: request checks, RAG pipeline, prompts, DynamoDB store
@@ -27,7 +28,7 @@ infra/      AWS CDK app (TypeScript)
   lib/config.ts             all per-stage settings: region, models, chunking, budget, chat
   lib/knowledge-base-stack.ts
   lib/chat-stack.ts         chat API: streaming Lambda Function URL + DynamoDB
-  lib/site-stack.ts         demo page: private S3 bucket + CloudFront (OAC, HTTPS)
+  lib/site-stack.ts         demo page: private S3 bucket + CloudFront (OAC, HTTPS), plus widget.js and its config
   lib/cost-stack.ts
 ```
 
@@ -70,7 +71,9 @@ The stacks print `DocsBucketName`, `KnowledgeBaseId`, `DataSourceId`, `ChatUrl` 
 npm run deploy:site:dev
 ```
 
-It prints `SiteUrl` (`https://<id>.cloudfront.net`). Edit files in `site/` and run the same command again: the bucket is synced and the CloudFront cache cleared. A new distribution takes a few minutes to come online after the first deploy. The chat widget placeholder is the comment at the end of `site/index.html`.
+It prints `SiteUrl` (`https://<id>.cloudfront.net`). Edit files in `site/` and run the same command again: the bucket is synced and the CloudFront cache cleared. A new distribution takes a few minutes to come online after the first deploy.
+
+The page embeds the chat widget. Each deploy bundles `packages/widget` into `/widget.js` and writes `/widget-config.json` with the chat API URL and site key, so the Site stack now depends on the Chat stack (deploying the page also deploys the chat API if it changed).
 
 ## Add documents
 
@@ -111,6 +114,18 @@ curl -N -X POST "<ChatUrl>" -H "content-type: application/json" \
 Events: `token` (a piece of the answer), `citations` (source PDFs and pages actually cited), `done`, or `error`. Reuse the same `sessionId` for follow-up questions.
 
 Settings live in `chat` in `infra/lib/config.ts`: model (`anthropic.claude-haiku-5-5` by default, or `anthropic.claude-sonnet-5-5`), company name, site key, allowed website origins, retrieval and history sizes, and rate limits (per IP per hour, per session per day). Dev allows any origin; set the real website origin for prod.
+
+## Chat widget
+
+One script tag adds a chat bubble in the bottom-right corner. It opens a panel (full screen on phones) that streams answers, lists the cited PDFs and pages, keeps the conversation while the visitor moves between pages, and speaks Polish or English based on the page's `lang`.
+
+```html
+<script src="https://<host>/widget.js" data-api-url="<ChatUrl>" data-site-key="<siteKey>" defer></script>
+```
+
+Options: `data-lang="pl|en"`, `data-title`, `data-color="#0b5d3b"`, or `data-config-url` to read `apiUrl` and `siteKey` from a JSON file (the demo page uses `/widget-config.json`). The website's origin must be in `chat.allowedOrigins` in `infra/lib/config.ts`.
+
+Demo mode gives canned answers without calling the API, so the widget can be tried before Bedrock is enabled: add `?chatdemo=1` to the page URL, or `data-demo="true"` to the script tag. Build the bundle alone with `npm run build:widget` (output: `packages/widget/dist/widget.js`, about 6 KB gzipped).
 
 ## Development
 

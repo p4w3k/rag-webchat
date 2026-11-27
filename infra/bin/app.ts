@@ -11,13 +11,13 @@ const env = { account: process.env.CDK_DEFAULT_ACCOUNT, region: config.region };
 const name = (part: string) => `RagWebchat-${config.stage}-${part}`;
 
 const kb = new KnowledgeBaseStack(app, name("KnowledgeBase"), { env, config });
-new ChatStack(app, name("Chat"), {
+const chat = new ChatStack(app, name("Chat"), {
   env,
   config,
   knowledgeBaseId: kb.knowledgeBase.attrKnowledgeBaseId,
   knowledgeBaseArn: kb.knowledgeBase.attrKnowledgeBaseArn,
 });
-new SiteStack(app, name("Site"), { env, config });
+new SiteStack(app, name("Site"), { env, config, chatUrl: chat.chatUrl.url });
 
 if (config.budget.alertEmail) {
   new CostStack(app, name("Cost"), { env, config });

@@ -15,6 +15,7 @@
     "constructs": "^10.4.2"
   },
   "devDependencies": {
+    "@rag-webchat/widget": "0.0.0",
     "aws-cdk": "^2.1149.0",
     "esbuild": "^0.28.2",
     "tsx": "^4.23.15"

@@ -89,10 +89,8 @@
     <div class="wrap">© 2026 Ciepłolux Sp. z o.o. (firma fikcyjna) · strona demonstracyjna projektu rag-webchat</div>
   </footer>
 
-  <!--
-    CHAT WIDGET PLACEHOLDER (Phase 3)
-    The embeddable chat widget goes here, just before </body>, for example:
-    <script src="https://<widget-host>/widget.js" data-api-url="https://<chat-api-url>" defer></script>
-  -->
+  <!-- Chat widget (packages/widget). The deploy publishes widget.js and widget-config.json next to this page.
+       Add ?chatdemo=1 to the URL for canned demo answers without calling the API. -->
+  <script src="/widget.js" data-config-url="/widget-config.json" defer></script>
 </body>
 </html>

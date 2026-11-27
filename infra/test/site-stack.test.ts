@@ -36,4 +36,17 @@ describe("SiteStack", () => {
     template.resourceCountIs("Custom::CDKBucketDeployment", 1);
     template.hasOutput("SiteUrl", {});
   });
+
+  it("publishes the widget and its config when a chat URL is given", () => {
+    const withChat = new SiteStack(new App(), "TestWithChat", {
+      config: getConfig("dev"),
+      chatUrl: "https://abc.lambda-url.eu-central-1.on.aws/",
+      env: { account: "123456789012", region: "eu-central-1" },
+    });
+    const t = Template.fromStack(withChat);
+    t.resourceCountIs("Custom::CDKBucketDeployment", 1);
+    const deployment = Object.values(t.findResources("Custom::CDKBucketDeployment"))[0] as { Properties: { SourceObjectKeys: unknown[] } };
+    // Page files, widget.js and widget-config.json, all in the one pruning deployment.
+    expect(deployment.Properties.SourceObjectKeys).toHaveLength(3);
+  });
 });

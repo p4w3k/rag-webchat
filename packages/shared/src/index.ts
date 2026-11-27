@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_MESSAGE_CHARS } from "./limits.js";
 
 /** Languages the agent answers in. */
 export const Language = z.enum(["pl", "en"]);
@@ -15,8 +16,8 @@ export type Sender = z.infer<typeof Sender>;
 export const ConversationStatus = z.enum(["bot", "waiting_for_agent", "with_agent", "closed"]);
 export type ConversationStatus = z.infer<typeof ConversationStatus>;
 
-/** Hard limit on a visitor message, enforced by the widget and the API. */
-export const MAX_MESSAGE_CHARS = 1000;
+// In its own file so the widget can import it without bundling zod.
+export { MAX_MESSAGE_CHARS };
 
 /** Body of POST /chat sent by the widget. */
 export const ChatRequest = z.object({
