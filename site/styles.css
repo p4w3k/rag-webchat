@@ -1,0 +1,63 @@
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --text: #1f2328;
+  --muted: #5b636d;
+  --accent: #d9480f;
+  --accent-soft: #fff1e8;
+  --border: #e6e2da;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171a;
+    --surface: #1e2125;
+    --text: #e8e6e3;
+    --muted: #a3a9b0;
+    --accent: #ff8a4c;
+    --accent-soft: #2b1f18;
+    --border: #2f3338;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+a { color: var(--accent); }
+.wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+.demo-banner {
+  background: var(--accent-soft);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 6px 16px;
+}
+.site-header { border-bottom: 1px solid var(--border); background: var(--surface); }
+.header-inner { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; justify-content: space-between; padding-top: 14px; padding-bottom: 14px; }
+.logo { font-weight: 800; font-size: 22px; color: var(--text); text-decoration: none; }
+.logo span { color: var(--accent); }
+nav { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+nav a:hover { color: var(--accent); }
+.hero { padding: 64px 0 48px; }
+.hero h1 { font-size: clamp(32px, 6vw, 48px); line-height: 1.15; margin: 0 0 16px; }
+.lead { font-size: 18px; color: var(--muted); max-width: 640px; margin: 0 0 16px; }
+.hint { display: inline-block; background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; margin: 0; }
+section.wrap { padding-top: 24px; padding-bottom: 24px; }
+h2 { font-size: 26px; margin: 0 0 12px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 20px 0; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.card.featured { border-color: var(--accent); }
+.card h3 { margin: 0 0 4px; font-size: 20px; }
+.spec { color: var(--muted); margin: 0 0 12px; font-size: 15px; }
+.price { font-size: 24px; font-weight: 700; margin: 0; }
+.note { color: var(--muted); font-size: 14px; }
+.list, .steps { padding-left: 20px; }
+.list li, .steps li { margin-bottom: 6px; }
+.contact p { color: var(--muted); }
+.site-footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 20px 0; color: var(--muted); font-size: 13px; }
+.notfound { padding: 80px 16px; text-align: center; }
+.notfound h1 { font-size: 64px; margin: 0; color: var(--accent); }

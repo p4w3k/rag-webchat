@@ -15,6 +15,7 @@
     "test": "npm run test --workspaces --if-present",
     "synth": "npm run synth -w infra --",
     "deploy:dev": "npm run deploy -w infra -- -c stage=dev",
+    "deploy:site:dev": "npm exec -w infra -- cdk deploy -c stage=dev RagWebchat-dev-Site",
     "deploy:prod": "npm run deploy -w infra -- -c stage=prod"
   },
   "devDependencies": {
