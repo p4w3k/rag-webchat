@@ -81,6 +81,21 @@ describe("runChat", () => {
     expect(answerMessages.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
   });
 
+  it("still answers a follow-up when the query rewrite fails", async () => {
+    const history: StoredMessage[] = [
+      { messageId: "a", sessionId: SESSION, sender: "visitor", text: "Ile kosztuje Komfort 9?", createdAt: "2026-11-27T11:00:00.000Z" },
+      { messageId: "b", sessionId: SESSION, sender: "bot", text: "38 500 zł [1].", createdAt: "2026-11-27T11:00:05.000Z" },
+    ];
+    const deps = fakeDeps({
+      loadHistory: vi.fn().mockResolvedValue(history),
+      complete: vi.fn().mockRejectedValue(new Error("ThrottlingException")),
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const events = await run(deps, "Ile kosztuje Komfort 9?");
+    expect(deps.retrieve).toHaveBeenCalledWith("Ile kosztuje Komfort 9?");
+    expect(events.at(-1)?.type).toBe("done");
+  });
+
   it("replaces a refusal with a polite fallback in the visitor's language", async () => {
     const deps = fakeDeps({ stream: vi.fn().mockResolvedValue({ text: "", stopReason: "refusal" }) });
     const events = await run(deps, "How long is the warranty?");
