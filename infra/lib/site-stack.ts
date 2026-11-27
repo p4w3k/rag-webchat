@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
@@ -5,6 +7,7 @@ import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import { buildWidgetSync } from "@rag-webchat/widget/build";
 import type { Construct } from "constructs";
 import type { StageConfig } from "./config.js";
 
@@ -14,12 +17,22 @@ export const siteDir = path.join(here, "../../site");
 
 export interface SiteStackProps extends StackProps {
   config: StageConfig;
+  /** Chat API endpoint; when set, the chat widget is bundled and published next to the page. */
+  chatUrl?: string;
+}
+
+/** Bundles the widget into a fresh folder at synth time; the asset hash follows its content. */
+function widgetAssetDir(): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-webchat-widget-"));
+  buildWidgetSync(path.join(dir, "widget.js"));
+  return dir;
 }
 
 /**
  * Public demo webpage: a private S3 bucket served only through CloudFront
  * (Origin Access Control), with HTTPS on the default *.cloudfront.net domain.
- * The chat widget gets embedded here in Phase 3.
+ * With a chatUrl, it also serves /widget.js and /widget-config.json, which
+ * the page's <script data-config-url> tag reads to reach the chat API.
  */
 export class SiteStack extends Stack {
   readonly bucket: s3.Bucket;
@@ -57,8 +70,16 @@ export class SiteStack extends Stack {
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
     });
 
+    // One deployment for everything: with prune on, a second one would delete the other's files.
+    const sources = [s3deploy.Source.asset(siteDir)];
+    if (props.chatUrl) {
+      sources.push(
+        s3deploy.Source.asset(widgetAssetDir()),
+        s3deploy.Source.jsonData("widget-config.json", { apiUrl: props.chatUrl, siteKey: props.config.chat.siteKey }),
+      );
+    }
     new s3deploy.BucketDeployment(this, "DeploySite", {
-      sources: [s3deploy.Source.asset(siteDir)],
+      sources,
       destinationBucket: this.bucket,
       distribution: this.distribution,
       distributionPaths: ["/*"],

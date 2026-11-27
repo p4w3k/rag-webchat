@@ -5,6 +5,7 @@
   "workspaces": [
     "packages/shared",
     "packages/api",
+    "packages/widget",
     "infra"
   ],
   "engines": {
@@ -16,7 +17,8 @@
     "synth": "npm run synth -w infra --",
     "deploy:dev": "npm run deploy -w infra -- -c stage=dev",
     "deploy:site:dev": "npm exec -w infra -- cdk deploy -c stage=dev RagWebchat-dev-Site",
-    "deploy:prod": "npm run deploy -w infra -- -c stage=prod"
+    "deploy:prod": "npm run deploy -w infra -- -c stage=prod",
+    "build:widget": "npm run build -w packages/widget"
   },
   "devDependencies": {
     "@types/node": "^22.20.7",

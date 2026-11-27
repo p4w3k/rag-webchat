@@ -1,0 +1,21 @@
+{
+  "name": "@rag-webchat/widget",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@rag-webchat/shared": "0.0.0",
+    "esbuild": "^0.28.2"
+  },
+  "exports": {
+    "./build": {
+      "types": "./build.d.mts",
+      "default": "./build.mjs"
+    }
+  }
+}
