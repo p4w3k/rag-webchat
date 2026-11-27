@@ -3,6 +3,7 @@ import { getConfig } from "../lib/config.js";
 import { ChatStack } from "../lib/chat-stack.js";
 import { CostStack } from "../lib/cost-stack.js";
 import { KnowledgeBaseStack } from "../lib/knowledge-base-stack.js";
+import { SiteStack } from "../lib/site-stack.js";
 
 const app = new App();
 const config = getConfig(app.node.tryGetContext("stage"));
@@ -16,6 +17,7 @@ new ChatStack(app, name("Chat"), {
   knowledgeBaseId: kb.knowledgeBase.attrKnowledgeBaseId,
   knowledgeBaseArn: kb.knowledgeBase.attrKnowledgeBaseArn,
 });
+new SiteStack(app, name("Site"), { env, config });
 
 if (config.budget.alertEmail) {
   new CostStack(app, name("Cost"), { env, config });
