@@ -1,17 +1,21 @@
-import { AnthropicBedrockMantle } from "@anthropic-ai/bedrock-sdk";
+import { AnthropicBedrock } from "@anthropic-ai/bedrock-sdk";
 import { BedrockAgentRuntimeClient, RetrieveCommand, type KnowledgeBaseRetrievalResult } from "@aws-sdk/client-bedrock-agent-runtime";
 import type { ModelResult } from "./rag.js";
 import type { Passage, PromptMessage } from "./prompt.js";
 
-/** Claude via Claude in Amazon Bedrock (Messages API on the bedrock-mantle endpoint). */
+/**
+ * Claude on Amazon Bedrock through the bedrock-runtime endpoint (InvokeModel).
+ * In eu-central-1 Claude Haiku 5.5 is served only there, through the EU
+ * cross-region inference profile (eu.anthropic.*); bedrock-mantle doesn't offer it.
+ */
 export class ClaudeModel {
-  private readonly client: AnthropicBedrockMantle;
+  private readonly client: AnthropicBedrock;
 
   constructor(
     region: string,
     private readonly modelId: string,
   ) {
-    this.client = new AnthropicBedrockMantle({ awsRegion: region, maxRetries: 2, timeout: 25_000 });
+    this.client = new AnthropicBedrock({ awsRegion: region, maxRetries: 2, timeout: 25_000 });
   }
 
   async complete(system: string, messages: PromptMessage[], maxTokens: number): Promise<ModelResult> {

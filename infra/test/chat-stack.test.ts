@@ -1,6 +1,6 @@
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ChatStack } from "../lib/chat-stack.js";
 import { getConfig } from "../lib/config.js";
 
@@ -28,10 +28,16 @@ describe("ChatStack", () => {
       PolicyDocument: {
         Statement: Match.arrayWith([
           Match.objectLike({ Action: "bedrock:Retrieve", Resource: "arn:aws:bedrock:eu-central-1:123456789012:knowledge-base/KB123" }),
-          Match.objectLike({ Action: "bedrock-mantle:CreateInference" }),
+          Match.objectLike({ Action: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"] }),
         ]),
       },
     });
+  });
+
+  it("scopes model calls to the EU inference profile and its underlying model", () => {
+    const policies = JSON.stringify(template.findResources("AWS::IAM::Policy"));
+    expect(policies).toContain(":inference-profile/eu.anthropic.claude-haiku-5-5");
+    expect(policies).toContain(":bedrock:*::foundation-model/anthropic.claude-haiku-5-5");
   });
 
   it("stores conversations in an on-demand table with TTL", () => {
@@ -43,7 +49,7 @@ describe("ChatStack", () => {
 
   it("passes the model and limits from config", () => {
     template.hasResourceProperties("AWS::Lambda::Function", {
-      Environment: { Variables: Match.objectLike({ MODEL_ID: "anthropic.claude-haiku-5-5", KNOWLEDGE_BASE_ID: "KB123", SITE_KEY: "dev-local" }) },
+      Environment: { Variables: Match.objectLike({ MODEL_ID: "eu.anthropic.claude-haiku-5-5", KNOWLEDGE_BASE_ID: "KB123", SITE_KEY: "dev-local" }) },
     });
   });
 });

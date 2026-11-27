@@ -80,9 +80,15 @@ export async function runChat(
 async function searchQuery(message: string, history: StoredMessage[], deps: ChatDeps): Promise<string> {
   const prior = historyMessages(history);
   if (prior.length === 0) return message;
-  const res = await deps.complete(condensePrompt(), [...prior, { role: "user", content: message }], 200);
-  const query = res.text.trim();
-  return query.length > 0 && res.stopReason !== "refusal" ? query : message;
+  try {
+    const res = await deps.complete(condensePrompt(), [...prior, { role: "user", content: message }], 200);
+    const query = res.text.trim();
+    return query.length > 0 && res.stopReason !== "refusal" ? query : message;
+  } catch (err) {
+    // The rewrite only sharpens retrieval; searching with the visitor's own words still works.
+    console.warn(JSON.stringify({ msg: "query rewrite failed, using the original question", error: String(err) }));
+    return message;
+  }
 }
 
 function toCitation(p: Passage): Citation {

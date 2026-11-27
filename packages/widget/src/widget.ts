@@ -40,7 +40,7 @@ export class RagWebchat extends HTMLElement {
     this.config = config;
     this.t = strings[config.lang];
     this.sessionId = loadSessionId();
-    this.transcript = loadTranscript();
+    this.transcript = loadTranscript(config.demo);
     this.root = this.attachShadow({ mode: "open" });
     this.render();
   }
@@ -163,7 +163,7 @@ export class RagWebchat extends HTMLElement {
     } finally {
       view.finish();
       this.transcript.push(reply);
-      saveTranscript(this.transcript);
+      saveTranscript(this.transcript, this.config.demo);
       this.live.textContent = stripCitationMarkers(reply.text);
       this.busy = false;
       this.sendBtn.disabled = false;
@@ -193,7 +193,7 @@ export class RagWebchat extends HTMLElement {
 
   private addMessage(m: ShownMessage): void {
     this.transcript.push(m);
-    saveTranscript(this.transcript);
+    saveTranscript(this.transcript, this.config.demo);
     this.list.append(this.bubble(m).node);
   }
 

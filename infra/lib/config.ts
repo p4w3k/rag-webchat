@@ -25,8 +25,8 @@ export interface StageConfig {
 
 export interface ChatConfig {
   /**
-   * Claude model id on Claude in Amazon Bedrock (bedrock-mantle endpoint).
-   * Haiku is fast and cheap; switch to "anthropic.claude-sonnet-5-5" for harder questions.
+   * Bedrock inference profile id for Claude (bedrock-runtime endpoint). The "eu." prefix keeps
+   * requests inside EU regions. Haiku is fast and cheap; "eu.anthropic.claude-sonnet-5-5" for harder questions.
    */
   modelId: string;
   /** Company name the assistant speaks for. */
@@ -45,7 +45,7 @@ export interface ChatConfig {
 }
 
 const sharedChat = {
-  modelId: "anthropic.claude-haiku-5-5",
+  modelId: "eu.anthropic.claude-haiku-5-5",
   companyName: "Ciepłolux",
   retrievalResults: 6,
   historyMessages: 6,

@@ -77,11 +77,16 @@ export class ChatStack extends Stack {
     fn.addToRolePolicy(
       new iam.PolicyStatement({ actions: ["bedrock:Retrieve"], resources: [props.knowledgeBaseArn] }),
     );
-    // Claude in Amazon Bedrock authorizes inference on the account's bedrock-mantle projects.
+    // The EU inference profile routes each request to one of the EU regions, so the
+    // role needs the profile itself plus the underlying model in every region.
+    const baseModelId = chat.modelId.replace(/^(eu|us|apac|jp|au|ca|global)\./, "");
     fn.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["bedrock-mantle:CreateInference"],
-        resources: [`arn:${this.partition}:bedrock-mantle:${this.region}:${this.account}:project/*`],
+        actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+        resources: [
+          `arn:${this.partition}:bedrock:${this.region}:${this.account}:inference-profile/${chat.modelId}`,
+          `arn:${this.partition}:bedrock:*::foundation-model/${baseModelId}`,
+        ],
       }),
     );
 
