@@ -1,0 +1,25 @@
+{
+  "name": "rag-webchat",
+  "private": true,
+  "description": "Embeddable webchat AI agent with RAG on AWS",
+  "workspaces": [
+    "packages/shared",
+    "packages/api",
+    "infra"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "synth": "npm run synth -w infra --",
+    "deploy:dev": "npm run deploy -w infra -- -c stage=dev",
+    "deploy:prod": "npm run deploy -w infra -- -c stage=prod"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.7",
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.2"
+  }
+}
