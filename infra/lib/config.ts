@@ -26,7 +26,8 @@ export interface StageConfig {
 export interface ChatConfig {
   /**
    * Bedrock inference profile id for Claude (bedrock-runtime endpoint). The "eu." prefix keeps
-   * requests inside EU regions. Haiku is fast and cheap; "eu.anthropic.claude-sonnet-5-5" for harder questions.
+   * requests inside EU regions. Haiku 4.5 until the account gets Claude 5.x access on Bedrock;
+   * then "eu.anthropic.claude-haiku-5-5" (or "eu.anthropic.claude-sonnet-4-6" for harder questions).
    */
   modelId: string;
   /** Company name the assistant speaks for. */
@@ -45,7 +46,7 @@ export interface ChatConfig {
 }
 
 const sharedChat = {
-  modelId: "eu.anthropic.claude-haiku-5-5",
+  modelId: "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
   companyName: "Ciepłolux",
   retrievalResults: 6,
   historyMessages: 6,

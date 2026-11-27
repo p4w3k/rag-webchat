@@ -36,8 +36,8 @@ describe("ChatStack", () => {
 
   it("scopes model calls to the EU inference profile and its underlying model", () => {
     const policies = JSON.stringify(template.findResources("AWS::IAM::Policy"));
-    expect(policies).toContain(":inference-profile/eu.anthropic.claude-haiku-5-5");
-    expect(policies).toContain(":bedrock:*::foundation-model/anthropic.claude-haiku-5-5");
+    expect(policies).toContain(":inference-profile/eu.anthropic.claude-haiku-4-5-20251001-v1:0");
+    expect(policies).toContain(":bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0");
   });
 
   it("stores conversations in an on-demand table with TTL", () => {
@@ -49,7 +49,7 @@ describe("ChatStack", () => {
 
   it("passes the model and limits from config", () => {
     template.hasResourceProperties("AWS::Lambda::Function", {
-      Environment: { Variables: Match.objectLike({ MODEL_ID: "eu.anthropic.claude-haiku-5-5", KNOWLEDGE_BASE_ID: "KB123", SITE_KEY: "dev-local" }) },
+      Environment: { Variables: Match.objectLike({ MODEL_ID: "eu.anthropic.claude-haiku-4-5-20251001-v1:0", KNOWLEDGE_BASE_ID: "KB123", SITE_KEY: "dev-local" }) },
     });
   });
 });

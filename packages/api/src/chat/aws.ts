@@ -4,18 +4,38 @@ import type { ModelResult } from "./rag.js";
 import type { Passage, PromptMessage } from "./prompt.js";
 
 /**
- * Claude on Amazon Bedrock through the bedrock-runtime endpoint (InvokeModel).
- * In eu-central-1 Claude Haiku 5.5 is served only there, through the EU
- * cross-region inference profile (eu.anthropic.*); bedrock-mantle doesn't offer it.
+ * Bedrock accepts the current API version only for Claude 4.7 and later; older
+ * models (Haiku 4.5, Sonnet 4.6, Opus 4.6 and earlier) need the original Bedrock one.
+ */
+export function needsLegacyApiVersion(modelId: string): boolean {
+  return /claude-(3|instant|haiku-4|sonnet-4|opus-4-[0-6](\b|-|$))/.test(modelId);
+}
+
+/** The effort setting is rejected by Haiku 4.5, Sonnet 4.5 and older models. */
+export function supportsEffort(modelId: string): boolean {
+  return !/claude-(3|instant|haiku-4-5|sonnet-4-5|sonnet-4-\d{8}|opus-4-[01])/.test(modelId);
+}
+
+/**
+ * Claude on Amazon Bedrock through the bedrock-runtime endpoint (InvokeModel),
+ * using an EU cross-region inference profile (eu.anthropic.*) so requests stay in the EU.
  */
 export class ClaudeModel {
   private readonly client: AnthropicBedrock;
+  private readonly effort: { output_config?: { effort: "low" } };
 
   constructor(
     region: string,
     private readonly modelId: string,
   ) {
-    this.client = new AnthropicBedrock({ awsRegion: region, maxRetries: 2, timeout: 25_000 });
+    this.client = new AnthropicBedrock({
+      awsRegion: region,
+      maxRetries: 2,
+      timeout: 25_000,
+      // The Bedrock client copies this header into the body's anthropic_version.
+      ...(needsLegacyApiVersion(modelId) ? { defaultHeaders: { "anthropic-version": "bedrock-2023-05-31" } } : {}),
+    });
+    this.effort = supportsEffort(modelId) ? { output_config: { effort: "low" } } : {};
   }
 
   async complete(system: string, messages: PromptMessage[], maxTokens: number): Promise<ModelResult> {
@@ -24,7 +44,7 @@ export class ClaudeModel {
       max_tokens: maxTokens,
       system,
       messages,
-      output_config: { effort: "low" },
+      ...this.effort,
     });
     return { text: textOf(msg.content), stopReason: msg.stop_reason };
   }
@@ -36,7 +56,7 @@ export class ClaudeModel {
       // The system prompt is identical on every request, so cache it.
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       messages,
-      output_config: { effort: "low" },
+      ...this.effort,
     });
     stream.on("text", (text) => onText(text));
     const msg = await stream.finalMessage();

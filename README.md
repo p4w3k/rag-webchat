@@ -113,7 +113,7 @@ curl -N -X POST "<ChatUrl>" -H "content-type: application/json" \
 
 Events: `token` (a piece of the answer), `citations` (source PDFs and pages actually cited), `done`, or `error`. Reuse the same `sessionId` for follow-up questions.
 
-Settings live in `chat` in `infra/lib/config.ts`: model (`eu.anthropic.claude-haiku-5-5` by default, or `eu.anthropic.claude-sonnet-5-5`; in eu-central-1 Claude runs through the EU cross-region inference profiles), company name, site key, allowed website origins, retrieval and history sizes, and rate limits (per IP per hour, per session per day). Dev allows any origin; set the real website origin for prod.
+Settings live in `chat` in `infra/lib/config.ts`: model (`eu.anthropic.claude-haiku-4-5-20251001-v1:0` by default, `eu.anthropic.claude-haiku-5-5` once the AWS account has Claude 5.x access; Claude runs through the EU cross-region inference profiles), company name, site key, allowed website origins, retrieval and history sizes, and rate limits (per IP per hour, per session per day). Dev allows any origin; set the real website origin for prod.
 
 ## Chat widget
 
