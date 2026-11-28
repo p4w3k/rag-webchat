@@ -8,8 +8,11 @@ Description: >-
 Parameters:
   GitHubRepo:
     Type: String
-    Default: p4w3k/rag-webchat
-    Description: owner/name of the repository allowed to use the role.
+    # GitHub repos created after 2026-07-15 put the numeric owner and repo IDs in the OIDC
+    # "sub" claim: repo:<owner>@<owner-id>/<repo>@<repo-id>:ref:refs/heads/<branch>.
+    # IDs come from GET /repos/p4w3k/rag-webchat (owner.id and id).
+    Default: p4w3k@217732982/rag-webchat@1474326813
+    Description: Repository as it appears in the GitHub OIDC sub claim (owner@owner-id/name@repo-id).
   GitHubBranch:
     Type: String
     Default: main
