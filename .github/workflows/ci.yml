@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Re-run the dev deploy by hand: Actions > CI > Run workflow (on main).
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,3 +24,31 @@ jobs:
       - run: npm test
       - name: CDK synth (dev)
         run: npm run synth -- -c stage=dev -q
+
+  # Deploys every stack of the dev stage (same as `npm run deploy:dev`) after a merge to main.
+  # It signs in to AWS with GitHub OIDC; see "Automatic deploys" in README.md for the one-time setup.
+  # Skipped until the repository variable AWS_DEPLOY_ROLE_ARN is set.
+  deploy-dev:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-central-1
+          role-session-name: rag-webchat-deploy-${{ github.run_id }}
+      - name: CDK deploy (dev)
+        run: npm run deploy:dev -- --require-approval never --progress events

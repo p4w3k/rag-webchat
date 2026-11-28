@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  rag-webchat: lets GitHub Actions deploy this repo's main branch to AWS without stored keys.
+  GitHub signs in through OpenID Connect and gets short-lived credentials for this role.
+  The role can only hand work to the CDK bootstrap roles of this account and region,
+  so it can deploy CDK stacks and nothing else.
+
+Parameters:
+  GitHubRepo:
+    Type: String
+    Default: p4w3k/rag-webchat
+    Description: owner/name of the repository allowed to use the role.
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: Only workflow runs on this branch can use the role.
+  CreateOidcProvider:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Set to false if the account already has the token.actions.githubusercontent.com identity provider.
+  CdkQualifier:
+    Type: String
+    Default: hnb659fds
+    Description: Qualifier used by `cdk bootstrap` (the default unless you changed it).
+
+Conditions:
+  MakeProvider: !Equals [!Ref CreateOidcProvider, "true"]
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: MakeProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: rag-webchat-github-deploy
+      Description: Assumed by GitHub Actions on the main branch of the rag-webchat repo to run cdk deploy.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - MakeProvider
+                - !Ref GitHubOidcProvider
+                - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubRepo}:ref:refs/heads/${GitHubBranch}
+      Policies:
+        - PolicyName: use-cdk-bootstrap-roles
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [sts:AssumeRole, sts:TagSession]
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-${CdkQualifier}-*-${AWS::AccountId}-${AWS::Region}
+
+Outputs:
+  RoleArn:
+    Description: Put this in the repository variable AWS_DEPLOY_ROLE_ARN.
+    Value: !GetAtt DeployRole.Arn

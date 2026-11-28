@@ -63,6 +63,28 @@ npm run deploy:dev
 
 The stacks print `DocsBucketName`, `KnowledgeBaseId`, `DataSourceId`, `ChatUrl` and `SiteUrl`.
 
+## Automatic deploys (GitHub Actions)
+
+Every push to `main` (a merged PR) runs the checks in `.github/workflows/ci.yml` and then deploys all dev stacks, the same as `npm run deploy:dev`. GitHub signs in to AWS through OpenID Connect, so no AWS keys are stored in GitHub. The role it uses (`infra/github/deploy-role.yaml`) only trusts this repository's `main` branch and can only use the CDK bootstrap roles, so it can deploy CDK stacks and do nothing else.
+
+One-time setup, after the CDK bootstrap above:
+
+1. Create the role (from the repo root, signed in to AWS as an admin). It prints the role ARN:
+
+   ```bash
+   npm run setup:github-deploy
+   ```
+
+   If it fails because the `token.actions.githubusercontent.com` identity provider already exists in the account, run the `aws cloudformation deploy` part of that script again with `--parameter-overrides CreateOidcProvider=false`.
+
+2. Save the ARN as a repository variable named `AWS_DEPLOY_ROLE_ARN`, either in GitHub under **Settings → Secrets and variables → Actions → Variables → New repository variable**, or with the GitHub CLI:
+
+   ```bash
+   gh variable set AWS_DEPLOY_ROLE_ARN --repo p4w3k/rag-webchat --body "arn:aws:iam::<ACCOUNT_ID>:role/rag-webchat-github-deploy"
+   ```
+
+Until the variable is set, the deploy job is skipped. To deploy without a new commit, open **Actions → CI → Run workflow** on `main`. Prod is not deployed automatically; run `npm run deploy:prod` yourself.
+
 ## Demo webpage
 
 `site/` holds a static page for a fictional company, served from a private S3 bucket through CloudFront over HTTPS. To deploy only the page:
