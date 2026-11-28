@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_MESSAGE_CHARS } from "./limits.js";
+import { MAX_MESSAGE_CHARS, MAX_SPEECH_CHARS } from "./limits.js";
 
 /** Languages the agent answers in. */
 export const Language = z.enum(["pl", "en"]);
@@ -17,7 +17,8 @@ export const ConversationStatus = z.enum(["bot", "waiting_for_agent", "with_agen
 export type ConversationStatus = z.infer<typeof ConversationStatus>;
 
 // In its own file so the widget can import it without bundling zod.
-export { MAX_MESSAGE_CHARS };
+export { MAX_MESSAGE_CHARS, MAX_SPEECH_CHARS };
+export { guessLanguage } from "./language.js";
 
 /** Body of POST /chat sent by the widget. */
 export const ChatRequest = z.object({
@@ -25,6 +26,8 @@ export const ChatRequest = z.object({
   sessionId: z.string().uuid(),
   message: z.string().trim().min(1).max(MAX_MESSAGE_CHARS),
   language: Language.optional(),
+  /** The answer will be read aloud, so it should be short and plain. */
+  voice: z.boolean().optional(),
 });
 export type ChatRequest = z.infer<typeof ChatRequest>;
 
@@ -53,3 +56,30 @@ export const StoredMessage = z.object({
   citations: z.array(Citation).optional(),
 });
 export type StoredMessage = z.infer<typeof StoredMessage>;
+
+/** Body of POST /voice/session: asks for a short-lived URL to stream microphone audio to Amazon Transcribe. */
+export const VoiceSessionRequest = z.object({
+  siteKey: z.string().min(1),
+  sessionId: z.string().uuid(),
+  /** The widget's language, preferred when Transcribe identifies the spoken language. */
+  language: Language,
+});
+export type VoiceSessionRequest = z.infer<typeof VoiceSessionRequest>;
+
+/** Reply to POST /voice/session. */
+export interface VoiceSession {
+  /** Presigned wss:// URL for Transcribe streaming (16 kHz, 16-bit PCM, Polish or English). */
+  url: string;
+  sampleRate: number;
+  /** The widget stops recording after this many seconds. */
+  maxSeconds: number;
+}
+
+/** Body of POST /voice/speech: one or two sentences of an answer to read aloud (returns audio/mpeg). */
+export const SpeechRequest = z.object({
+  siteKey: z.string().min(1),
+  sessionId: z.string().uuid(),
+  text: z.string().trim().min(1).max(MAX_SPEECH_CHARS),
+  language: Language,
+});
+export type SpeechRequest = z.infer<typeof SpeechRequest>;

@@ -12,8 +12,15 @@
     "@aws-sdk/client-bedrock-agent": "^3.1178.0",
     "@aws-sdk/client-bedrock-agent-runtime": "^3.1178.0",
     "@aws-sdk/client-dynamodb": "^3.1178.0",
+    "@aws-sdk/client-polly": "^3.1179.0",
+    "@aws-sdk/credential-provider-node": "^3.972.99",
     "@aws-sdk/lib-dynamodb": "^3.1178.0",
-    "@rag-webchat/shared": "0.0.0"
+    "@rag-webchat/shared": "0.0.0",
+    "@smithy/hash-node": "^4.5.2",
+    "@smithy/signature-v4": "^5.7.5",
+    "@smithy/types": "^4.20.0",
+    "@smithy/util-uri-escape": "^4.5.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.164"

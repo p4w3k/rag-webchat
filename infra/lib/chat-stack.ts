@@ -21,6 +21,8 @@ export interface ChatStackProps extends StackProps {
  * Phase 2: the streaming chat API. A Lambda behind a Function URL (response
  * streaming) runs the RAG loop: history from DynamoDB, passages from the
  * knowledge base, answer from Claude in Amazon Bedrock, streamed as SSE.
+ * With voice on, the same function presigns Amazon Transcribe streaming URLs
+ * for the microphone (/voice/session) and reads answers aloud with Amazon Polly (/voice/speech).
  */
 export class ChatStack extends Stack {
   readonly chatUrl: lambda.FunctionUrl;
@@ -59,6 +61,18 @@ export class ChatStack extends Stack {
         MAX_OUTPUT_TOKENS: String(chat.maxOutputTokens),
         MAX_REQUESTS_PER_IP_PER_HOUR: String(chat.maxRequestsPerIpPerHour),
         MAX_MESSAGES_PER_SESSION_PER_DAY: String(chat.maxMessagesPerSessionPerDay),
+        ...(chat.voice.enabled
+          ? {
+              VOICE_ENABLED: "true",
+              POLLY_VOICE_PL: chat.voice.pollyVoicePl,
+              POLLY_VOICE_EN: chat.voice.pollyVoiceEn,
+              VOICE_MAX_RECORDING_SECONDS: String(chat.voice.maxRecordingSeconds),
+              VOICE_MAX_RECORDINGS_PER_SESSION_PER_DAY: String(chat.voice.maxRecordingsPerSessionPerDay),
+              VOICE_MAX_RECORDINGS_PER_IP_PER_HOUR: String(chat.voice.maxRecordingsPerIpPerHour),
+              VOICE_MAX_SPEECH_CHARS_PER_SESSION_PER_DAY: String(chat.voice.maxSpeechCharsPerSessionPerDay),
+              VOICE_MAX_SPEECH_CHARS_PER_IP_PER_HOUR: String(chat.voice.maxSpeechCharsPerIpPerHour),
+            }
+          : {}),
       },
       logGroup: new logs.LogGroup(this, "ChatLogs", {
         retention: logs.RetentionDays.ONE_MONTH,
@@ -89,6 +103,14 @@ export class ChatStack extends Stack {
         ],
       }),
     );
+
+    if (chat.voice.enabled) {
+      // The Lambda presigns Transcribe streaming URLs for the browser with its own role, and calls Polly.
+      // Neither action supports resource-level permissions, so the resource is "*".
+      fn.addToRolePolicy(
+        new iam.PolicyStatement({ actions: ["transcribe:StartStreamTranscriptionWebSocket", "polly:SynthesizeSpeech"], resources: ["*"] }),
+      );
+    }
 
     this.chatUrl = fn.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,

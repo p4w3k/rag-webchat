@@ -47,3 +47,15 @@ export function loadTranscript(demo: boolean): ShownMessage[] {
 export function saveTranscript(messages: ShownMessage[], demo: boolean): void {
   safe(() => sessionStorage.setItem(transcriptKey(demo), JSON.stringify(messages.slice(-50))), undefined);
 }
+
+const VOICE_REPLIES_KEY = "rag-webchat:voice-replies";
+
+/** Whether answers are read aloud: the visitor's explicit choice, or undefined if they never chose. */
+export function loadVoiceReplies(): boolean | undefined {
+  const v = safe(() => localStorage.getItem(VOICE_REPLIES_KEY), null);
+  return v === "on" ? true : v === "off" ? false : undefined;
+}
+
+export function saveVoiceReplies(on: boolean): void {
+  safe(() => localStorage.setItem(VOICE_REPLIES_KEY, on ? "on" : "off"), undefined);
+}

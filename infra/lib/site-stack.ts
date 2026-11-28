@@ -75,7 +75,11 @@ export class SiteStack extends Stack {
     if (props.chatUrl) {
       sources.push(
         s3deploy.Source.asset(widgetAssetDir()),
-        s3deploy.Source.jsonData("widget-config.json", { apiUrl: props.chatUrl, siteKey: props.config.chat.siteKey }),
+        s3deploy.Source.jsonData("widget-config.json", {
+          apiUrl: props.chatUrl,
+          siteKey: props.config.chat.siteKey,
+          voice: props.config.chat.voice.enabled,
+        }),
       );
     }
     new s3deploy.BucketDeployment(this, "DeploySite", {

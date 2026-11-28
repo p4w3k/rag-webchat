@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./limits": "./src/limits.ts"
+    "./limits": "./src/limits.ts",
+    "./language": "./src/language.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

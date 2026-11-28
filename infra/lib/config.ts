@@ -43,6 +43,22 @@ export interface ChatConfig {
   maxOutputTokens: number;
   maxRequestsPerIpPerHour: number;
   maxMessagesPerSessionPerDay: number;
+  /** Talking to the assistant: microphone to Amazon Transcribe, answers read aloud by Amazon Polly. */
+  voice: VoiceConfig;
+}
+
+export interface VoiceConfig {
+  enabled: boolean;
+  /** Amazon Polly neural voices. Ola is the neural Polish voice. */
+  pollyVoicePl: string;
+  pollyVoiceEn: string;
+  /** The widget stops recording after this long. */
+  maxRecordingSeconds: number;
+  maxRecordingsPerSessionPerDay: number;
+  maxRecordingsPerIpPerHour: number;
+  /** Polly bills per character; these cap what one visitor can have read aloud. */
+  maxSpeechCharsPerSessionPerDay: number;
+  maxSpeechCharsPerIpPerHour: number;
 }
 
 const sharedChat = {
@@ -53,6 +69,16 @@ const sharedChat = {
   maxOutputTokens: 800,
   maxRequestsPerIpPerHour: 60,
   maxMessagesPerSessionPerDay: 40,
+  voice: {
+    enabled: true,
+    pollyVoicePl: "Ola",
+    pollyVoiceEn: "Joanna",
+    maxRecordingSeconds: 30,
+    maxRecordingsPerSessionPerDay: 40,
+    maxRecordingsPerIpPerHour: 40,
+    maxSpeechCharsPerSessionPerDay: 15_000,
+    maxSpeechCharsPerIpPerHour: 20_000,
+  },
 } satisfies Partial<ChatConfig>;
 
 const shared = {
