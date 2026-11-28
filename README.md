@@ -22,7 +22,7 @@ packages/
   widget/   embeddable chat widget: one script, a <rag-webchat> element in Shadow DOM (no framework)
   api/      Lambda handlers
     src/ingest.ts       re-syncs the knowledge base when PDFs change
-    src/chat/           chat API: request checks, RAG pipeline, prompts, DynamoDB store
+    src/chat/           chat API: request checks, RAG pipeline, prompts, DynamoDB store, voice (Transcribe URL, Polly)
 site/       static demo webpage (Ciepłolux, a fictional company) where the widget gets embedded
 infra/      AWS CDK app (TypeScript)
   lib/config.ts             all per-stage settings: region, models, chunking, budget, chat
@@ -125,7 +125,24 @@ One script tag adds a chat bubble in the bottom-right corner. It opens a panel (
 
 Options: `data-lang="pl|en"`, `data-title`, `data-color="#0b5d3b"`, or `data-config-url` to read `apiUrl` and `siteKey` from a JSON file (the demo page uses `/widget-config.json`). The website's origin must be in `chat.allowedOrigins` in `infra/lib/config.ts`.
 
-Demo mode gives canned answers without calling the API, so the widget can be tried before Bedrock is enabled: add `?chatdemo=1` to the page URL, or `data-demo="true"` to the script tag. Build the bundle alone with `npm run build:widget` (output: `packages/widget/dist/widget.js`, about 6 KB gzipped).
+Demo mode gives canned answers without calling the API, so the widget can be tried before Bedrock is enabled: add `?chatdemo=1` to the page URL, or `data-demo="true"` to the script tag (voice is off in demo mode). Build the bundle alone with `npm run build:widget` (output: `packages/widget/dist/widget.js`, about 11 KB gzipped).
+
+## Voice
+
+Visitors can talk to the assistant in Polish or English. The knowledge base and chat logic are the same as for typed questions; voice is a layer around them.
+
+1. The visitor taps the microphone button. The widget asks the chat API (`POST <ChatUrl>voice/session`) for a presigned Amazon Transcribe streaming URL, valid for one minute and signed with the chat Lambda's role. The browser never gets AWS credentials.
+2. Audio streams from the microphone straight to Transcribe (16 kHz PCM over WebSocket), which identifies Polish (`pl-PL`) or English (`en-US`) and returns text live; the text appears in the input box.
+3. Recording stops when the visitor taps again, about 1.5 seconds after they stop talking, or at the time limit. The text is sent as a normal chat message, with `voice: true` so the answer is short and plain.
+4. While the answer streams, the widget cuts it into sentences and asks `POST <ChatUrl>voice/speech` to read each one with an Amazon Polly neural voice (Ola for Polish, Joanna for English). The first sentence plays while the rest is still being written.
+
+The speaker button in the header turns reading answers aloud on or off (remembered in the browser). It turns on by itself the first time the visitor uses the microphone, unless they switched it off before. Tapping the microphone also stops the voice.
+
+Settings are in `chat.voice` in `infra/lib/config.ts`: `enabled`, the Polly voices, the recording limit (30 s), and caps on recordings and characters read aloud per session per day and per IP per hour. Set `enabled: false` to remove the microphone and the voice endpoints.
+
+Embedding on another site: add `data-voice="true"` to the script tag (the demo page gets it from `widget-config.json`). The page must be served over HTTPS, and if it has a Content-Security-Policy, allow `connect-src wss://transcribestreaming.eu-central-1.amazonaws.com:8443` and the chat URL.
+
+Cost: Transcribe streaming is about $0.024 per minute of speech and Polly neural about $16 per million characters, so a few spoken conversations a day cost cents per month. The per-session and per-IP caps bound the worst case.
 
 ## Development
 

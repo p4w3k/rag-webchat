@@ -9,6 +9,7 @@ const RETENTION_DAYS = 30;
  *   pk SESSION#<id>  sk MSG#<iso time>#<id>   chat messages
  *   pk SESSION#<id>  sk RATE#<yyyy-mm-dd>     messages sent by the session that day
  *   pk IP#<ip>       sk RATE#<yyyy-mm-ddThh>  requests from an IP that hour
+ *   pk SESSION#<id> / IP#<ip>  sk VOICE#… / SPEECH#…  recordings started and characters read aloud
  * Every item has `expiresAt` (epoch seconds) for DynamoDB TTL.
  */
 export class ChatStore {
@@ -52,15 +53,15 @@ export class ChatStore {
     );
   }
 
-  /** Increments the counter and returns the new value. */
-  async increment(pk: string, sk: string, ttlDays: number): Promise<number> {
+  /** Adds `by` (default 1) to the counter and returns the new value. */
+  async increment(pk: string, sk: string, ttlDays: number, by = 1): Promise<number> {
     const res = await this.doc.send(
       new UpdateCommand({
         TableName: this.tableName,
         Key: { pk, sk },
         UpdateExpression: "ADD #count :one SET expiresAt = if_not_exists(expiresAt, :exp)",
         ExpressionAttributeNames: { "#count": "count" },
-        ExpressionAttributeValues: { ":one": 1, ":exp": expiry(ttlDays) },
+        ExpressionAttributeValues: { ":one": by, ":exp": expiry(ttlDays) },
         ReturnValues: "UPDATED_NEW",
       }),
     );

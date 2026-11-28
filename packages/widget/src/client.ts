@@ -13,6 +13,8 @@ export interface SendArgs {
   sessionId: string;
   message: string;
   language: "pl" | "en";
+  /** The answer will be read aloud. */
+  voice?: boolean;
   signal?: AbortSignal;
 }
 
@@ -21,7 +23,7 @@ export async function* sendMessage(args: SendArgs): AsyncGenerator<ChatStreamEve
   const res = await fetch(args.apiUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ siteKey: args.siteKey, sessionId: args.sessionId, message: args.message, language: args.language }),
+    body: JSON.stringify({ siteKey: args.siteKey, sessionId: args.sessionId, message: args.message, language: args.language, ...(args.voice ? { voice: true } : {}) }),
     ...(args.signal ? { signal: args.signal } : {}),
   });
   if (!res.ok || !res.body) throw new ChatHttpError(res.status);

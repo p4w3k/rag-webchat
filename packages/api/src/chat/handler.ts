@@ -1,32 +1,37 @@
 import { randomUUID } from "node:crypto";
 import type { Writable } from "node:stream";
-import type { ChatStreamEvent } from "@rag-webchat/shared";
+import { type ChatStreamEvent, SpeechRequest, type VoiceSession, VoiceSessionRequest } from "@rag-webchat/shared";
 import type { LambdaFunctionURLEvent } from "aws-lambda";
 import { ClaudeModel, KnowledgeBase } from "./aws.js";
 import { runChat } from "./rag.js";
 import { checkRequest } from "./request.js";
 import { settingsFromEnv } from "./settings.js";
 import { ChatStore } from "./store.js";
+import { Speech, TRANSCRIBE_SAMPLE_RATE, TranscribeUrlSigner } from "./voice.js";
 
 const settings = settingsFromEnv();
 const store = new ChatStore(settings.tableName);
 const model = new ClaudeModel(settings.region, settings.modelId);
 const kb = new KnowledgeBase(settings.region, settings.knowledgeBaseId, settings.retrievalResults);
+const voice = settings.voice;
+const transcribe = voice ? new TranscribeUrlSigner(settings.region) : undefined;
+const speech = voice ? new Speech(settings.region, voice) : undefined;
+
+const RATE_LIMITED = { error: "rate_limited", message: "Too many requests, please try again later." };
 
 /**
- * POST /chat on a Lambda Function URL with response streaming.
- * Replies with Server-Sent Events: token*, citations?, done | error.
+ * One Lambda Function URL with response streaming:
+ *   POST /               chat turn, Server-Sent Events: token*, citations?, done | error
+ *   POST /voice/session  presigned Transcribe streaming URL for the microphone (JSON)
+ *   POST /voice/speech   one or two sentences read aloud by Polly (audio/mpeg)
  */
 export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(async (event, responseStream) => {
-  const check = checkRequest(
-    {
-      method: event.requestContext.http.method,
-      origin: event.headers?.origin,
-      body: event.body,
-      isBase64Encoded: event.isBase64Encoded,
-    },
-    settings,
-  );
+  const path = event.rawPath.replace(/\/+$/, "");
+  if (path === "/voice/session") return voiceSession(event, responseStream);
+  if (path === "/voice/speech") return voiceSpeech(event, responseStream);
+  if (path !== "" && path !== "/chat") return sendJson(responseStream, 404, { error: "not_found", message: "Unknown path" });
+
+  const check = checkRequest(incoming(event), settings);
   if (!check.ok) return sendJson(responseStream, check.status, { error: check.code, message: check.message });
   const req = check.request;
 
@@ -38,7 +43,7 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(async
   ]);
   if (perIp > settings.maxRequestsPerIpPerHour || perSession > settings.maxMessagesPerSessionPerDay) {
     console.warn(JSON.stringify({ msg: "rate limited", ip, sessionId: req.sessionId, perIp, perSession }));
-    return sendJson(responseStream, 429, { error: "rate_limited", message: "Too many messages, please try again later." });
+    return sendJson(responseStream, 429, RATE_LIMITED);
   }
 
   const stream = awslambda.HttpResponseStream.from(responseStream, {
@@ -63,7 +68,7 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(async
       { companyName: settings.companyName, maxOutputTokens: settings.maxOutputTokens },
       emit,
     );
-    console.log(JSON.stringify({ msg: "chat ok", sessionId: req.sessionId, ms: Date.now() - started }));
+    console.log(JSON.stringify({ msg: "chat ok", sessionId: req.sessionId, voice: req.voice === true, ms: Date.now() - started }));
   } catch (err) {
     console.error(JSON.stringify({ msg: "chat failed", sessionId: req.sessionId, error: String(err) }));
     emit({ type: "error", code: "internal", message: "Something went wrong. Please try again." });
@@ -71,6 +76,73 @@ export const handler = awslambda.streamifyResponse<LambdaFunctionURLEvent>(async
     stream.end();
   }
 });
+
+/** Hands the widget a one-minute URL to stream microphone audio straight to Amazon Transcribe. */
+async function voiceSession(event: LambdaFunctionURLEvent, responseStream: Writable): Promise<void> {
+  if (!voice || !transcribe) return sendJson(responseStream, 404, { error: "not_found", message: "Voice is turned off" });
+  const check = checkRequest(incoming(event), settings, VoiceSessionRequest);
+  if (!check.ok) return sendJson(responseStream, check.status, { error: check.code, message: check.message });
+  const req = check.request;
+
+  const ip = event.requestContext.http.sourceIp;
+  const now = new Date().toISOString();
+  const [perIp, perSession] = await Promise.all([
+    store.increment(`IP#${ip}`, `VOICE#${now.slice(0, 13)}`, 1),
+    store.increment(`SESSION#${req.sessionId}`, `VOICE#${now.slice(0, 10)}`, 2),
+  ]);
+  if (perIp > voice.maxRecordingsPerIpPerHour || perSession > voice.maxRecordingsPerSessionPerDay) {
+    console.warn(JSON.stringify({ msg: "voice rate limited", ip, sessionId: req.sessionId, perIp, perSession }));
+    return sendJson(responseStream, 429, RATE_LIMITED);
+  }
+  try {
+    const body: VoiceSession = { url: await transcribe.url(req.language), sampleRate: TRANSCRIBE_SAMPLE_RATE, maxSeconds: voice.maxRecordingSeconds };
+    console.log(JSON.stringify({ msg: "voice session", sessionId: req.sessionId }));
+    sendJson(responseStream, 200, body);
+  } catch (err) {
+    console.error(JSON.stringify({ msg: "voice session failed", sessionId: req.sessionId, error: String(err) }));
+    sendJson(responseStream, 500, { error: "internal", message: "Something went wrong. Please try again." });
+  }
+}
+
+/** Reads one piece of an answer aloud. Counted in characters, which is how Polly bills. */
+async function voiceSpeech(event: LambdaFunctionURLEvent, responseStream: Writable): Promise<void> {
+  if (!voice || !speech) return sendJson(responseStream, 404, { error: "not_found", message: "Voice is turned off" });
+  const check = checkRequest(incoming(event), settings, SpeechRequest);
+  if (!check.ok) return sendJson(responseStream, check.status, { error: check.code, message: check.message });
+  const req = check.request;
+
+  const ip = event.requestContext.http.sourceIp;
+  const now = new Date().toISOString();
+  const chars = req.text.length;
+  const [perIp, perSession] = await Promise.all([
+    store.increment(`IP#${ip}`, `SPEECH#${now.slice(0, 13)}`, 1, chars),
+    store.increment(`SESSION#${req.sessionId}`, `SPEECH#${now.slice(0, 10)}`, 2, chars),
+  ]);
+  if (perIp > voice.maxSpeechCharsPerIpPerHour || perSession > voice.maxSpeechCharsPerSessionPerDay) {
+    console.warn(JSON.stringify({ msg: "speech rate limited", ip, sessionId: req.sessionId, perIp, perSession }));
+    return sendJson(responseStream, 429, RATE_LIMITED);
+  }
+  try {
+    const audio = await speech.synthesize(req.text, req.language);
+    const out = awslambda.HttpResponseStream.from(responseStream, {
+      statusCode: 200,
+      headers: { "content-type": "audio/mpeg", "cache-control": "no-store" },
+    });
+    out.end(Buffer.from(audio));
+  } catch (err) {
+    console.error(JSON.stringify({ msg: "speech failed", sessionId: req.sessionId, error: String(err) }));
+    sendJson(responseStream, 500, { error: "internal", message: "Something went wrong. Please try again." });
+  }
+}
+
+function incoming(event: LambdaFunctionURLEvent) {
+  return {
+    method: event.requestContext.http.method,
+    origin: event.headers?.origin,
+    body: event.body,
+    isBase64Encoded: event.isBase64Encoded,
+  };
+}
 
 function sendJson(responseStream: Writable, statusCode: number, body: unknown): void {
   const out = awslambda.HttpResponseStream.from(responseStream, {

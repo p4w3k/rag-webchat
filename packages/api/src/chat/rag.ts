@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatStreamEvent, Citation, StoredMessage } from "@rag-webchat/shared";
+import { type ChatRequest, type ChatStreamEvent, type Citation, guessLanguage, type StoredMessage } from "@rag-webchat/shared";
 import { answerMessages, citedIndices, condensePrompt, historyMessages, type Passage, type PromptMessage, systemPrompt } from "./prompt.js";
 
 export interface ModelResult {
@@ -50,7 +50,7 @@ export async function runChat(
   const passages = await deps.retrieve(query);
 
   const system = systemPrompt(opts.companyName);
-  const result = await deps.stream(system, answerMessages(history, passages, req.message), opts.maxOutputTokens, (text) =>
+  const result = await deps.stream(system, answerMessages(history, passages, req.message, req.voice === true), opts.maxOutputTokens, (text) =>
     emit({ type: "token", text }),
   );
 
@@ -105,7 +105,4 @@ function dedupeCitations(citations: Citation[]): Citation[] {
   });
 }
 
-/** Cheap guess used only for the fallback message when the widget sent no language. */
-export function guessLanguage(text: string): "pl" | "en" {
-  return /[ąćęłńóśźż]|\b(czy|jak|ile|jest|nie|dla|się|pompa|cena|koszt)\b/i.test(text) ? "pl" : "en";
-}
+export { guessLanguage };

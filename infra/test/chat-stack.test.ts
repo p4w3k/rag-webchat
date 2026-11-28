@@ -40,6 +40,19 @@ describe("ChatStack", () => {
     expect(policies).toContain(":bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0");
   });
 
+  it("lets the Lambda presign Transcribe streams and call Polly when voice is on", () => {
+    template.hasResourceProperties("AWS::IAM::Policy", {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({ Action: ["transcribe:StartStreamTranscriptionWebSocket", "polly:SynthesizeSpeech"], Resource: "*" }),
+        ]),
+      },
+    });
+    template.hasResourceProperties("AWS::Lambda::Function", {
+      Environment: { Variables: Match.objectLike({ VOICE_ENABLED: "true", POLLY_VOICE_PL: "Ola", VOICE_MAX_RECORDING_SECONDS: "30" }) },
+    });
+  });
+
   it("stores conversations in an on-demand table with TTL", () => {
     template.hasResourceProperties("AWS::DynamoDB::Table", {
       BillingMode: "PAY_PER_REQUEST",

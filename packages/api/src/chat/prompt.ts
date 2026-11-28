@@ -41,11 +41,18 @@ export function formatDocuments(passages: Passage[]): string {
   return `<documents>\n${docs.join("\n")}\n</documents>`;
 }
 
+/**
+ * Added to the question when the answer will be read aloud. It goes in the user turn,
+ * not the system prompt, so the cached system prompt stays the same for text and voice.
+ */
+export const VOICE_NOTE = `This answer will be read aloud by a text-to-speech voice. Answer in 1 to 3 short spoken sentences. No lists, markdown, symbols, emoji or URLs. Write prices, sizes and units the way you would say them. Keep the [n] citations after facts; they are not read aloud.`;
+
 /** Conversation for the answer call: prior turns as plain text, then documents + the new question. */
-export function answerMessages(history: StoredMessage[], passages: Passage[], question: string): PromptMessage[] {
+export function answerMessages(history: StoredMessage[], passages: Passage[], question: string, voice = false): PromptMessage[] {
+  const note = voice ? `\n\n<answer_format>${VOICE_NOTE}</answer_format>` : "";
   return [
     ...historyMessages(history),
-    { role: "user", content: `${formatDocuments(passages)}\n\nVisitor's question: ${question}` },
+    { role: "user", content: `${formatDocuments(passages)}\n\nVisitor's question: ${question}${note}` },
   ];
 }
 

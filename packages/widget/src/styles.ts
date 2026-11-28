@@ -36,6 +36,17 @@ textarea { flex: 1; resize: none; border: 1px solid var(--rw-border); border-rad
   max-height: 120px; min-height: 40px; background: #fff; }
 .send { border: none; background: var(--rw-color); color: #fff; border-radius: 10px; width: 42px; height: 40px; display: grid; place-items: center; }
 .send:disabled { opacity: .5; cursor: default; }
+.mic { border: 1px solid var(--rw-border); background: var(--rw-bg); color: var(--rw-color); border-radius: 10px; width: 42px; height: 40px;
+  display: grid; place-items: center; flex: none; }
+.mic svg { width: 20px; height: 20px; }
+.mic:hover { background: var(--rw-soft); }
+.mic:focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
+.mic.connecting { opacity: .7; }
+.mic.recording { background: #c62828; border-color: #c62828; color: #fff; animation: rw-pulse 1.4s ease-out infinite; }
+@keyframes rw-pulse { 0% { box-shadow: 0 0 0 0 rgba(198,40,40,.45); } 100% { box-shadow: 0 0 0 10px rgba(198,40,40,0); } }
+textarea:read-only { background: var(--rw-soft); }
+.icon-btn[aria-pressed="true"] { background: rgba(255,255,255,.2); }
+.icon-btn.speaking svg { animation: blink 1.2s ease-in-out infinite; }
 .send svg { width: 20px; height: 20px; }
 .footer { font-size: 11.5px; color: var(--rw-muted); padding: 0 12px 10px; background: var(--rw-bg); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -44,6 +55,6 @@ textarea { flex: 1; resize: none; border: 1px solid var(--rw-border); border-rad
   .launcher { right: 16px; bottom: 16px; }
   .panel:not([hidden]) ~ .launcher { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .launcher { transition: none; } .msg.pending .body::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .launcher { transition: none; } .msg.pending .body::after, .mic.recording, .icon-btn.speaking svg { animation: none; } }
 `;
 }
