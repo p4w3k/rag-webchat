@@ -18,6 +18,7 @@
     "deploy:dev": "npm run deploy -w infra -- -c stage=dev",
     "deploy:site:dev": "npm exec -w infra -- cdk deploy -c stage=dev RagWebchat-dev-Site",
     "deploy:prod": "npm run deploy -w infra -- -c stage=prod",
+    "setup:github-deploy": "aws cloudformation deploy --region eu-central-1 --stack-name RagWebchat-GitHubDeploy --template-file infra/github/deploy-role.yaml --capabilities CAPABILITY_NAMED_IAM && aws cloudformation describe-stacks --region eu-central-1 --stack-name RagWebchat-GitHubDeploy --query \"Stacks[0].Outputs[?OutputKey=='RoleArn'].OutputValue\" --output text",
     "build:widget": "npm run build -w packages/widget"
   },
   "devDependencies": {
